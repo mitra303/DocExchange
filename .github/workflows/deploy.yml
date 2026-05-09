@@ -10,62 +10,81 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # =========================
+      # 1️⃣ Checkout Repository
+      # =========================
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node
-      - name: Setup Node
+      # =========================
+      # 2️⃣ Setup Node.js
+      # =========================
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # -------------------
-      # 🔹 FRONTEND BUILD
-      # -------------------
-      - name: Install frontend deps
-        run: |
-          cd frontend
-          npm install
+      # =========================
+      # 3️⃣ Install Frontend Dependencies
+      # =========================
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
 
+      # =========================
+      # 4️⃣ Build Frontend
+      # =========================
       - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
+        working-directory: ./frontend
+        run: npm run build
 
-      # -------------------
-      # 🔹 BACKEND BUILD
-      # -------------------
-      - name: Install backend deps
-        run: |
-          cd backend
-          npm install
+      # =========================
+      # 5️⃣ Install Backend Dependencies
+      # =========================
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
 
-      - name: Build backend
-        run: |
-          cd backend
-          npm run build
-
-      # -------------------
-      # 🚀 DEPLOY TO SERVER
-      # -------------------
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v0.1.6
+      # =========================
+      # 6️⃣ Deploy to EC2 Server
+      # =========================
+      - name: Deploy application to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           script: |
+            set -e
+
+            echo "🚀 Starting deployment..."
+
             cd /home/ubuntu/DocExchange
 
+            echo "📥 Pulling latest code..."
             git pull origin main
 
-            # Backend
-            cd backend
-            npm install
-            pm2 restart all
+            # =========================
+            # Backend Setup
+            # =========================
+            echo "⚙️ Setting up backend..."
 
-            # Frontend
-            cd ../frontend
+            cd backend
+
             npm install
+
+            # Restart backend with PM2
+            pm2 restart all || pm2 start npm --name backend -- start
+
+            # =========================
+            # Frontend Setup
+            # =========================
+            echo "⚙️ Setting up frontend..."
+
+            cd ../frontend
+
+            npm install
+
             npm run build
+
+            echo "✅ Deployment completed successfully!"
