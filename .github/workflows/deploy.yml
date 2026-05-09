@@ -1,0 +1,71 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # -------------------
+      # 🔹 FRONTEND BUILD
+      # -------------------
+      - name: Install frontend deps
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      # -------------------
+      # 🔹 BACKEND BUILD
+      # -------------------
+      - name: Install backend deps
+        run: |
+          cd backend
+          npm install
+
+      - name: Build backend
+        run: |
+          cd backend
+          npm run build
+
+      # -------------------
+      # 🚀 DEPLOY TO SERVER
+      # -------------------
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd /home/ubuntu/DocExchange
+
+            git pull origin main
+
+            # Backend
+            cd backend
+            npm install
+            pm2 restart all
+
+            # Frontend
+            cd ../frontend
+            npm install
+            npm run build
