@@ -7,15 +7,22 @@ const ProtectedRoute = ({
   children: React.ReactNode;
   roleRequired: number;
 }) => {
-  const token = localStorage.getItem("token");
+
+  // ✅ Check both storages
+  const token =
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token");
 
   if (!token) {
     return <Navigate to="/" replace />;
   }
 
   try {
-    const decoded: any = JSON.parse(atob(token.split(".")[1]));
+    const decoded: any = JSON.parse(
+      atob(token.split(".")[1])
+    );
 
+    // ✅ Role check
     if (decoded.role !== roleRequired) {
       return <Navigate to="/" replace />;
     }
@@ -23,8 +30,14 @@ const ProtectedRoute = ({
     return children;
 
   } catch (err) {
-    // invalid token → logout
+
+    // ✅ Clear invalid token
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
     return <Navigate to="/" replace />;
   }
 };

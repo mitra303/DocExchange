@@ -10,47 +10,81 @@ export default function Login() {
   const [isForgot, setIsForgot] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [rememberMe, setRememberMe] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      toast.error("Please fill all fields");
-      return;
-    }
+const handleLogin = async () => {
+  if (!email || !password) {
+    toast.error("Please fill all fields");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const { data } = await api.post("/auth/login", {
+    // ✅ Login API
+    const { data } = await api.post(
+      "/auth/login",
+      {
         email,
         password,
-      });
-      const { token } = data;
+      }
+    );
 
-      // ✅ Save token
+    const { token } = data;
+
+    // ✅ Decode JWT
+    const decoded: any = JSON.parse(
+      atob(token.split(".")[1])
+    );
+
+    const role = decoded.role;
+
+    // ✅ Clear old storage first
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
+    // ✅ Remember Me Logic
+    if (rememberMe) {
       localStorage.setItem("token", token);
 
-      // ✅ Decode role
-      const decoded: any = JSON.parse(atob(token.split(".")[1]));
-      const role = decoded.role;
-
-      // ✅ Redirect based on role
-     if (role === 1) {
-        navigate("/admin-dashboard", { replace: true });
-      } else {
-        navigate("/user-dashboard", { replace: true });
-      }
-
-
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.message || "Login failed ❌"
+      localStorage.setItem(
+        "user",
+        JSON.stringify(decoded)
       );
-    } finally {
-      setLoading(false);
-    }
-  };
+    } else {
+      sessionStorage.setItem("token", token);
 
-const handleForgot = async () => {
+      sessionStorage.setItem(
+        "user",
+        JSON.stringify(decoded)
+      );
+    }
+
+    // ✅ Redirect by role
+    if (role === 1) {
+      navigate("/admin-dashboard", {
+        replace: true,
+      });
+    } else {
+      navigate("/user-dashboard", {
+        replace: true,
+      });
+    }
+
+  } catch (err: any) {
+    toast.error(
+      err.response?.data?.message ||
+      "Login failed ❌"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleForgot = async () => {
     if (!email) {
       toast.error("Please enter your email");
       return;
@@ -132,10 +166,20 @@ const handleForgot = async () => {
             <div className="flex justify-between items-center text-sm">
               {!isForgot ? (
                 <>
-                  <label className="flex items-center gap-2 text-gray-500">
-                    <input type="checkbox" className="accent-purple-500" />
-                    Remember me
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="remember"
+                      checked={rememberMe}
+                      onChange={(e) =>
+                        setRememberMe(e.target.checked)
+                      }
+                    />
+
+                    <label htmlFor="remember">
+                      Remember Me
+                    </label>
+                  </div>
 
                   <button
                     onClick={() => setIsForgot(true)}
